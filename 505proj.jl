@@ -1,78 +1,58 @@
 using Plots,SpecialFunctions, Roots, ForwardDiff,Printf
-#Problem Parameters
+#Problem Parameters--------------------------------------------------------------------------------------------------------------------------------
 R1 = 1
 R2 = 2
 nu = .1
+function omega(t)
+    return 0.1*sin(2*pi*t)#.1*t
+end
 tspan = (0,3)
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Visualization Parameters----------------------------------------------------------------------------------------------------------------------------------------------------------
 nframes = 90
 number_eigenvalues = 30
 integralresolution = 10000
 Rresolution = 250
 FPS = 30
-threedfilename = "3Danimation.gif"
-twodfilename = "2Danimation.gif"
-zmax = 0.6
-maxv = 0.2 #Max Vth value expected (for colors)
-zmin = -0.21
+Vθ_3Ddfilename = "3Danimation.gif"
+Vθ_2Dfilename = "2Danimation.gif"
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function omega(t)
-    return 0.1*sin(2*pi*t)#.1*t
-end
+function plotanulus(rs,vs,time,vθlims)
 
-#Test Function
-function f(x)
-    if x > 1.5
-        return 1
-    else
-        return 0
-    end
-end
-
-function plotanulus(rs,vs,time)
-    #timetrunc = round(time*100)/100
     #PARAMS
-    resolution = 30
-    coldv = zmin
-    hotv = maxv
+    θresolution = 30
+    coldv = vθlims[1]
+    hotv = vθlims[2]
     #
-    ths = collect(0:2*pi/resolution:2*pi)
     xs = []
     ys = []
     fs=[]
     lims = (-1.5*rs[end],1.5*rs[end])
-    top = zmax#maximum(vs) + 1*(maximum(vs)-minimum(vs))
-    bot = zmin#minimum(vs) - 1*(maximum(vs)-minimum(vs))
-    zrange = (bot,top)
+    zrange = (vθlims[1]*2,vθlims[2]*2)
     
     p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = zrange,linecolor = RGBA(1,0,0,1),legend = false,camera = (15,50),plot_title="t=$(@sprintf("%.2f", time))"*"s",plot_titlelocation = :left)
 
     #Plot rings
+    θs = collect(0:2*pi/θresolution:2*pi)
     for i = 1:1:length(rs)
-        value = vs[i]
-        if (vs[i] >= 0) && (vs[i] <= hotv)
-        elseif vs[i] < 0
-            value = 0
-        else
-            value = hotv
-            #println(vs[i])
-        end
-        colorR = (value-coldv)/(hotv-coldv)
+        
+        colorR = (vs[i]-coldv)/(hotv-coldv)
         colorB = 1-colorR
-        newxs = @.sin(ths)*rs[i]
-        newys = @.cos(ths)*rs[i]
-        newfs = @.cos(ths)/cos(ths) *vs[i]
+        newxs = @.sin(θs)*rs[i]
+        newys = @.cos(θs)*rs[i]
+        newfs = @.cos(θs)/cos(θs) *vs[i]
         plot!(newxs,newys,newfs,linecolor = RGBA(colorR,0,colorB,1))
     end
 
     #plot spokes
-    colorS = 15/length(ths)
-    for i = 1:1:length(ths)
-        newxs = @.sin(ths[i])*rs
-        newys = @.cos(ths[i])*rs
+    colorS = 15/length(θs)
+    for i = 1:1:length(θs)
+        newxs = @.sin(θs[i])*rs
+        newys = @.cos(θs[i])*rs
         plot!(newxs,newys,vs,linecolor = RGBA(colorS,colorS,colorS,1))
     end
-    #Add time:
-    #annotate!(0,0,0,"t=$time"*"s")
     return p
 end
 
@@ -165,24 +145,36 @@ function Vth(r::Vector,t)
     return vth
 end
 
-rs = collect(R1:(R2-R1)/(Rresolution-1):R2)
-ts = collect(tspan[1]:(tspan[2]-tspan[1])/(nframes-1):tspan[2])
-vss = []
-
-anim3d = @animate for frame = 1:1:nframes
-    local vs = zeros(length(rs))
-    #for i = 1:1:length(vs)
-    #    vs[i] = Vth(rs[i],ts[frame])
-    #end
-    vs = Vth(rs,ts[frame])
-    push!(vss,vs)
-    plotanulus(rs,vs,ts[frame])
+function simulate()
+    rs = collect(R1:(R2-R1)/(Rresolution-1):R2)
+    ts = collect(tspan[1]:(tspan[2]-tspan[1])/(nframes-1):tspan[2])
+    vθs = []
+    minvθ = 0
+    maxvθ = 0
+    for frame = 1:1:nframes
+        vs = zeros(length(rs))
+        vs = Vth(rs,ts[frame])
+        if maximum(vs) > maxvθ
+            maxvθ = maximum(vs)
+        end
+        if minimum(vs) < minvθ
+            minvθ = minimum(vs)
+        end
+        push!(vθs,vs)
+    end
+    return rs,ts,vθs,minvθ,maxvθ
 end
-anim2d = @animate for frame = 1:1:nframes
-    plot(rs,vss[frame],xlims = (0,R2),ylims=(zmin,zmax),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
+
+rs,ts,vθs,minvθ,maxvθ = simulate()
+#animate
+vθanim3d = @animate for frame = 1:1:nframes
+    plotanulus(rs,vθs[frame],ts[frame],(minvθ,maxvθ))
+end
+vθanim2d = @animate for frame = 1:1:nframes
+    plot(rs,vθs[frame],xlims = (0,R2),ylims=(minvθ,maxvθ),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
 end
 
 
-gif(anim3d, threedfilename, fps=FPS)
-gif(anim2d, twodfilename, fps=FPS)
+gif(vθanim3d, Vθ_3Ddfilename, fps=FPS)
+gif(vθanim2d, Vθ_2Ddfilename, fps=FPS)
 
