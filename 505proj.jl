@@ -1,4 +1,4 @@
-using Plots,SpecialFunctions, Roots, ForwardDiff
+using Plots,SpecialFunctions, Roots, ForwardDiff,Printf
 #Problem Parameters
 R1 = 1
 R2 = 2
@@ -13,7 +13,7 @@ threedfilename = "3Danimation.gif"
 twodfilename = "2Danimation.gif"
 zmax = 0.6
 maxv = 0.2 #Max Vth value expected (for colors)
-zmin = -0.25
+zmin = -0.21
 
 function omega(t)
     return 0.1*sin(2*pi*t)#.1*t
@@ -28,7 +28,8 @@ function f(x)
     end
 end
 
-function plotanulus(rs,vs)
+function plotanulus(rs,vs,time)
+    #timetrunc = round(time*100)/100
     #PARAMS
     resolution = 30
     coldv = zmin
@@ -42,7 +43,8 @@ function plotanulus(rs,vs)
     top = zmax#maximum(vs) + 1*(maximum(vs)-minimum(vs))
     bot = zmin#minimum(vs) - 1*(maximum(vs)-minimum(vs))
     zrange = (bot,top)
-    p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = zrange,linecolor = RGBA(1,0,0,1),legend = false,camera = (15,50))
+    
+    p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = zrange,linecolor = RGBA(1,0,0,1),legend = false,camera = (15,50),plot_title="t=$(@sprintf("%.2f", time))"*"s",plot_titlelocation = :left)
 
     #Plot rings
     for i = 1:1:length(rs)
@@ -69,6 +71,8 @@ function plotanulus(rs,vs)
         newys = @.cos(ths[i])*rs
         plot!(newxs,newys,vs,linecolor = RGBA(colorS,colorS,colorS,1))
     end
+    #Add time:
+    #annotate!(0,0,0,"t=$time"*"s")
     return p
 end
 
@@ -172,10 +176,10 @@ anim3d = @animate for frame = 1:1:nframes
     #end
     vs = Vth(rs,ts[frame])
     push!(vss,vs)
-    plotanulus(rs,vs)
+    plotanulus(rs,vs,ts[frame])
 end
 anim2d = @animate for frame = 1:1:nframes
-    plot(rs,vss[frame],xlims = (0,R2),ylims=(zmin,zmax),legend = false)
+    plot(rs,vss[frame],xlims = (0,R2),ylims=(zmin,zmax),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
 end
 
 
