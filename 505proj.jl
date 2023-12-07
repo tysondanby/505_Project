@@ -15,8 +15,12 @@ number_eigenvalues = 30
 integralresolution = 10000
 Rresolution = 250
 FPS = 30
-Vθ_3Ddfilename = "3Danimation.gif"
-Vθ_2Dfilename = "2Danimation.gif"
+Vθ_3Dfilename = "Vθ_3Danimation.gif"
+Vθ_2Dfilename = "Vθ_2Danimation.gif"
+Vz_3Dfilename = "Vz_3Danimation.gif"
+Vz_2Dfilename = "Vz_2Danimation.gif"
+V_3Dfilename = "V_3Danimation.gif"
+
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 function plotanulus(rs,vs,time,vθlims)
@@ -145,27 +149,50 @@ function Vth(r::Vector,t)
     return vth
 end
 
+function Vz(r::Vector,t)#TODO: add this function from andrew's code
+    return r
+end
+
 function simulate()
     rs = collect(R1:(R2-R1)/(Rresolution-1):R2)
     ts = collect(tspan[1]:(tspan[2]-tspan[1])/(nframes-1):tspan[2])
     vθs = []
+    vzs = []
     minvθ = 0
     maxvθ = 0
+    minvz = 0
+    maxvz = 0
+    maxv = 0
     for frame = 1:1:nframes
-        vs = zeros(length(rs))
-        vs = Vth(rs,ts[frame])
-        if maximum(vs) > maxvθ
-            maxvθ = maximum(vs)
+        #Actual Calculations
+        vθ = zeros(length(rs))#TODO: These two lines probably arent needed.
+        vz = zeros(length(rs))
+        vθ = Vth(rs,ts[frame])
+        vz = Vz(rs,ts[frame])
+        push!(vθs,vθ)
+        push!(vzs,vz)
+
+        #Track Extrema
+        if maximum(vθ) > maxvθ
+            maxvθ = maximum(vθ)
         end
-        if minimum(vs) < minvθ
-            minvθ = minimum(vs)
+        if minimum(vθ) < minvθ
+            minvθ = minimum(vθ)
         end
-        push!(vθs,vs)
+        if maximum(vz) > maxvz
+            maxvz = maximum(vz)
+        end
+        if minimum(vz) < minvz
+            minvz = minimum(vz)
+        end
+        if maximum(@. (vθ^2 + vz^2)) > maxv^2
+            maxv = maximum(@. sqrt(vθ^2 + vz^2))
+        end
     end
-    return rs,ts,vθs,minvθ,maxvθ
+    return rs,ts,vθs,minvθ,maxvθ,vzs,minvz,maxvz,maxv
 end
 
-rs,ts,vθs,minvθ,maxvθ = simulate()
+rs,ts,vθs,minvθ,maxvθ,vzs,minvz,maxvz,maxv = simulate()
 #animate
 vθanim3d = @animate for frame = 1:1:nframes
     plotanulus(rs,vθs[frame],ts[frame],(minvθ,maxvθ))
@@ -173,8 +200,15 @@ end
 vθanim2d = @animate for frame = 1:1:nframes
     plot(rs,vθs[frame],xlims = (0,R2),ylims=(minvθ,maxvθ),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
 end
+vzanim3d = @animate for frame = 1:1:nframes
+    plotanulus(rs,vzs[frame],ts[frame],(minvz,maxvz))
+end
+vzanim2d = @animate for frame = 1:1:nframes
+    plot(rs,vzs[frame],xlims = (0,R2),ylims=(minvz,maxvz),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
+end
 
-
-gif(vθanim3d, Vθ_3Ddfilename, fps=FPS)
-gif(vθanim2d, Vθ_2Ddfilename, fps=FPS)
-
+dir = "Animations/"
+gif(vθanim3d, dir*Vθ_3Dfilename, fps=FPS)
+gif(vθanim2d, dir*Vθ_2Dfilename, fps=FPS)
+gif(vzanim3d, dir*Vz_3Dfilename, fps=FPS)
+gif(vzanim2d, dir*Vz_2Dfilename, fps=FPS)
