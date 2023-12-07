@@ -23,6 +23,20 @@ V_3Dfilename = "V_3Danimation.gif"
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+function progressbar(s,x)
+    n = 35
+    percentsimulated = round(x*1000)/10
+    bar = ""
+    for i = 1:1:n
+        if x >= (i/n)
+            bar = bar*"█"
+        else
+            bar = bar*"░"
+        end
+    end
+    println("\n\n\n\n\n\n\n\n\n\n\n\n"*s*": "*bar*" $percentsimulated"*"%"*"\n\n")
+end
+
 function plotanulus(rs,vs,time,vθlims)
 
     #PARAMS
@@ -60,6 +74,49 @@ function plotanulus(rs,vs,time,vθlims)
     return p
 end
 
+function plotvprofile(rs,vz,vθ,time,zrange,maxv)
+
+    #PARAMS
+    θresolution = 30
+    coldv = 0
+    hotv = maxv
+    #
+    xs = []
+    ys = []
+    fs=[]
+    lims = (-1.1*rs[end],1.1*rs[end])
+    p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = (2*zrange[1],2*zrange[2]),linecolor = RGBA(1,0,0,1),legend = false,camera = (15,40),plot_title="t=$(@sprintf("%.2f", time))"*"s",plot_titlelocation = :left)
+
+    #Plot Inner Ring
+    θs = collect(0:2*pi/θresolution:2*pi)
+    inxs = @.sin(θs)*R1
+    inys = @.cos(θs)*R1
+    newfs = zeros(length(θs))
+    plot!(inxs,inys,newfs,linecolor = RGBA(0,0,0,1))
+    #Plot Outer Ring
+    outxs = @.sin(θs)*R2
+    outys = @.cos(θs)*R2
+    plot!(outxs,outys,newfs,linecolor = RGBA(0,0,0,1))
+    #Plot spokes
+    plot!([R1,R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    plot!([-R1,-R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    plot!([0,0],[R1,R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    plot!([0,0],[-R1,-R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    #Plot Velocity Vectors on Spokes
+    for i = 1:1:length(rs)
+        mag = sqrt(vθ[i]^2+vz[i]^2)
+        colorR = (mag-coldv)/(hotv-coldv)
+        colorB = 1-colorR
+        #originating from x axis
+        plot!([rs[i],rs[i]],[0,vθ[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+        plot!([-rs[i],-rs[i]],[0,-vθ[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+        #originating from y axis
+        plot!([0,-vθ[i]],[rs[i],rs[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+        plot!([0,vθ[i]],[-rs[i],-rs[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+    end
+    return p
+end
+
 function integrate(f,lowb,upb,steps)#Midpoint method
     I = 0
     for i =1:2:(2*steps-1)
@@ -84,13 +141,16 @@ function findeigs(nEigs)
     eigs = []
     lo = 0
     hi = step
+    progressbar("Finding Eigenvalues",0)
     while length(eigs) < nEigs
         newzeros=find_zeros(char_eq, lo,hi)
         lo = lo + step
         hi = hi + step
         eigs = [eigs;newzeros]
+        if newzeros != []
+            progressbar("Finding Eigenvalues",length(eigs)/nEigs)
+        end
     end
-    #println(eigs)
     yns = []
     ynprimeR2s = zeros(length(eigs))
     sqrnorms = zeros(length(eigs))
@@ -104,33 +164,13 @@ function findeigs(nEigs)
             return newyn(x)^2*x
         end
         sqrnorms[i] = integrate(sqrnormint,R1,R2,integralresolution)
+        progressbar("Precomputing",i/nEigs)
     end
 
     return eigs,yns,ynprimeR2s,sqrnorms
 end
 
 eigs,yns,ynprimeR2s,sqrnorms = findeigs(number_eigenvalues)
-
-
-
-function Vth(r,t)
-
-    vth = 0
-    for i = 1:1:length(eigs)
-        yn = yns[i]
-        function vthbarint(tau)
-            return -1*omega(t-tau)*nu*R2^2*ynprimeR2s[i]*exp(-nu*eigs[i]^2*tau)
-        end
-        vthbar = integrate(vthbarint,0,t,integralresolution)
-        #function test(x)
-        #    return x*yn(x)*f(x)
-        #end
-        #testint = integrate(test,R1,R2,100*i)
-        #vth=vth + (testint/sqrnorm)*yn(r) #TEST
-        vth=vth + (vthbar/sqrnorms[i])*yn(r)
-    end
-    return vth
-end
 
 function Vth(r::Vector,t)
 
@@ -150,7 +190,7 @@ function Vth(r::Vector,t)
 end
 
 function Vz(r::Vector,t)#TODO: add this function from andrew's code
-    return r
+    return @. (R1-r)*(r-R2)
 end
 
 function simulate()
@@ -171,7 +211,9 @@ function simulate()
         vz = Vz(rs,ts[frame])
         push!(vθs,vθ)
         push!(vzs,vz)
-
+        #Progress Bar
+        progressbar("Simulating",frame/nframes)
+        
         #Track Extrema
         if maximum(vθ) > maxvθ
             maxvθ = maximum(vθ)
@@ -196,15 +238,23 @@ rs,ts,vθs,minvθ,maxvθ,vzs,minvz,maxvz,maxv = simulate()
 #animate
 vθanim3d = @animate for frame = 1:1:nframes
     plotanulus(rs,vθs[frame],ts[frame],(minvθ,maxvθ))
+    progressbar("Animating",.2*frame/nframes)
 end
 vθanim2d = @animate for frame = 1:1:nframes
     plot(rs,vθs[frame],xlims = (0,R2),ylims=(minvθ,maxvθ),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
+    progressbar("Animating",.2*frame/nframes+.2)
 end
 vzanim3d = @animate for frame = 1:1:nframes
     plotanulus(rs,vzs[frame],ts[frame],(minvz,maxvz))
+    progressbar("Animating",.2*frame/nframes+.4)
 end
 vzanim2d = @animate for frame = 1:1:nframes
     plot(rs,vzs[frame],xlims = (0,R2),ylims=(minvz,maxvz),legend = false,plot_title="t=$(@sprintf("%.2f", ts[frame]))"*"s",plot_titlelocation = :left)
+    progressbar("Animating",.2*frame/nframes+.6)
+end
+vanim3d = @animate for frame = 1:1:nframes
+    plotvprofile(rs,vzs[frame],vθs[frame],ts[frame],(minvz,maxvz),maxv)
+    progressbar("Animating",.2*frame/nframes+.8)
 end
 
 dir = "Animations/"
@@ -212,3 +262,4 @@ gif(vθanim3d, dir*Vθ_3Dfilename, fps=FPS)
 gif(vθanim2d, dir*Vθ_2Dfilename, fps=FPS)
 gif(vzanim3d, dir*Vz_3Dfilename, fps=FPS)
 gif(vzanim2d, dir*Vz_2Dfilename, fps=FPS)
+gif(vanim3d, dir*V_3Dfilename, fps=FPS)
