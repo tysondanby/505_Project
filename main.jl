@@ -3,25 +3,30 @@ using Plots,SpecialFunctions, Roots, ForwardDiff,Printf
 R1 = 1
 R2 = 2
 nu = .1
+rho = 1.0
+dPdz = -2.0
 function omega(t)
-    return 0.1*sin(2*pi*t)#.1*t
+    return 0.2*sin(2*pi*t)#.1*t
 end
 tspan = (0,3)
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #Visualization Parameters----------------------------------------------------------------------------------------------------------------------------------------------------------
-nframes = 90
+nframes = 30
 number_eigenvalues = 30
 integralresolution = 10000
-Rresolution = 250
-FPS = 30
+Rresolution = 200
+FPS = 10
 Vθ_3Dfilename = "Vθ_3Danimation.gif"
 Vθ_2Dfilename = "Vθ_2Danimation.gif"
 Vz_3Dfilename = "Vz_3Danimation.gif"
 Vz_2Dfilename = "Vz_2Danimation.gif"
 V_3Dfilename = "V_3Danimation.gif"
+nprofiles = 8
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
 function progressbar(s,x)
     n = 35
@@ -36,6 +41,8 @@ function progressbar(s,x)
     end
     println("\n\n\n\n\n\n\n\n\n\n\n\n"*s*": "*bar*" $percentsimulated"*"%"*"\n\n")
 end
+
+include("Vz_stuff.jl")
 
 function plotanulus(rs,vs,time,vθlims)
 
@@ -80,12 +87,13 @@ function plotvprofile(rs,vz,vθ,time,zrange,maxv)
     θresolution = 30
     coldv = 0
     hotv = maxv
+    az = 15 *pi/180
     #
     xs = []
     ys = []
     fs=[]
     lims = (-1.1*rs[end],1.1*rs[end])
-    p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = (2*zrange[1],2*zrange[2]),linecolor = RGBA(1,0,0,1),legend = false,camera = (15,40),plot_title="t=$(@sprintf("%.2f", time))"*"s",plot_titlelocation = :left)
+    p=plot(xs,ys,fs,xlims = lims,ylims = lims,zlims = (2*zrange[1],2*zrange[2]),linecolor = RGBA(1,0,0,1),legend = false,camera = (az*180/pi,40),plot_title="t=$(@sprintf("%.2f", time))"*"s",plot_titlelocation = :left)
 
     #Plot Inner Ring
     θs = collect(0:2*pi/θresolution:2*pi)
@@ -98,21 +106,35 @@ function plotvprofile(rs,vz,vθ,time,zrange,maxv)
     outys = @.cos(θs)*R2
     plot!(outxs,outys,newfs,linecolor = RGBA(0,0,0,1))
     #Plot spokes
-    plot!([R1,R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    plot!([-R1,-R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    plot!([0,0],[R1,R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    plot!([0,0],[-R1,-R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    #Plot Velocity Vectors on Spokes
+    #plot!([R1,R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    #plot!([-R1,-R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    #plot!([0,0],[R1,R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    #plot!([0,0],[-R1,-R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
+    #Plot Velocity Vectors on Spokes, start with back.
+    for i = 1:1:length(rs)
+        mag = sqrt(vθ[end-i+1]^2+vz[end-i+1]^2)
+        colorR = (mag-coldv)/(hotv-coldv)
+        colorB = 1-colorR
+        for th = (2*pi)/nprofiles:(2*pi)/nprofiles:(2*pi)
+            if (th <= pi+az) && (th >= az)
+                xpt = [rs[end-i+1]*cos(th),rs[end-i+1]*cos(th)-vθ[end-i+1]*sin(th)]
+                ypt = [rs[end-i+1]*sin(th),rs[end-i+1]*sin(th)+vθ[end-i+1]*cos(th)]
+                plot!(xpt,ypt,[0,vz[end-i+1]],linecolor = RGBA(colorR,0,colorB,1))
+            end
+        end
+    end
+    #Plot Velocity Vectors on Spokes, end with front.
     for i = 1:1:length(rs)
         mag = sqrt(vθ[i]^2+vz[i]^2)
         colorR = (mag-coldv)/(hotv-coldv)
         colorB = 1-colorR
-        #originating from x axis
-        plot!([rs[i],rs[i]],[0,vθ[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
-        plot!([-rs[i],-rs[i]],[0,-vθ[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
-        #originating from y axis
-        plot!([0,-vθ[i]],[rs[i],rs[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
-        plot!([0,vθ[i]],[-rs[i],-rs[i]],[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+        for th = (2*pi)/nprofiles:(2*pi)/nprofiles:(2*pi)
+            if (th > (pi+az)) || (th < az)
+                xpt = [rs[i]*cos(th),rs[i]*cos(th)-vθ[i]*sin(th)]
+                ypt = [rs[i]*sin(th),rs[i]*sin(th)+vθ[i]*cos(th)]
+                plot!(xpt,ypt,[0,vz[i]],linecolor = RGBA(colorR,0,colorB,1))
+            end
+        end
     end
     return p
 end
@@ -164,7 +186,7 @@ function findeigs(nEigs)
             return newyn(x)^2*x
         end
         sqrnorms[i] = integrate(sqrnormint,R1,R2,integralresolution)
-        progressbar("Precomputing",i/nEigs)
+        progressbar("Precomputing Vθ",i/nEigs)
     end
 
     return eigs,yns,ynprimeR2s,sqrnorms
@@ -190,7 +212,7 @@ function Vth(r::Vector,t)
 end
 
 function Vz(r::Vector,t)#TODO: add this function from andrew's code
-    return @. (R1-r)*(r-R2)
+    return @. Vz2(r,t)
 end
 
 function simulate()
