@@ -4,19 +4,19 @@ R1 = 1
 R2 = 2
 nu = .1
 rho = 1.0
-dPdz = -2.0
+dPdz = -1.0
 function omega(t)
-    return 0.2*sin(2*pi*t)#.1*t
+    return 0.3*sin(2*pi*t)#.1*t
 end
-tspan = (0,3)
+tspan = (0,5)
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #Visualization Parameters----------------------------------------------------------------------------------------------------------------------------------------------------------
-nframes = 30
-number_eigenvalues = 30
-integralresolution = 10000
-Rresolution = 200
-FPS = 10
+nframes = 300
+number_eigenvalues = 45
+integralresolution = 50000
+Rresolution = 350
+FPS = 30
 Vθ_3Dfilename = "Vθ_3Danimation.gif"
 Vθ_2Dfilename = "Vθ_2Danimation.gif"
 Vz_3Dfilename = "Vz_3Danimation.gif"
@@ -105,11 +105,6 @@ function plotvprofile(rs,vz,vθ,time,zrange,maxv)
     outxs = @.sin(θs)*R2
     outys = @.cos(θs)*R2
     plot!(outxs,outys,newfs,linecolor = RGBA(0,0,0,1))
-    #Plot spokes
-    #plot!([R1,R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    #plot!([-R1,-R2],[0,0],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    #plot!([0,0],[R1,R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
-    #plot!([0,0],[-R1,-R2],[0,0],linecolor = RGBA(.5,.5,.5,1))
     #Plot Velocity Vectors on Spokes, start with back.
     for i = 1:1:length(rs)
         mag = sqrt(vθ[end-i+1]^2+vz[end-i+1]^2)
