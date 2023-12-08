@@ -15,7 +15,7 @@ tspan = (0,5)
 nframes = 300
 number_eigenvalues = 45
 integralresolution = 50000
-Rresolution = 350
+Rresolution = 500
 FPS = 30
 Vθ_3Dfilename = "Vθ_3Danimation.gif"
 Vθ_2Dfilename = "Vθ_2Danimation.gif"
@@ -61,13 +61,14 @@ function plotanulus(rs,vs,time,vθlims)
 
     #Plot rings
     θs = collect(0:2*pi/θresolution:2*pi)
+    indicies = sortperm(vs)
     for i = 1:1:length(rs)
-        
-        colorR = (vs[i]-coldv)/(hotv-coldv)
+        index = indicies[i]
+        colorR = (vs[index]-coldv)/(hotv-coldv)
         colorB = 1-colorR
-        newxs = @.sin(θs)*rs[i]
-        newys = @.cos(θs)*rs[i]
-        newfs = @.cos(θs)/cos(θs) *vs[i]
+        newxs = @.sin(θs)*rs[index]
+        newys = @.cos(θs)*rs[index]
+        newfs = @.cos(θs)/cos(θs) *vs[index]
         plot!(newxs,newys,newfs,linecolor = RGBA(colorR,0,colorB,1))
     end
 
