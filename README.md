@@ -31,7 +31,7 @@ end
 Timespan of simulation. Here from 0-5 seconds:
 `tspan = (0,5)`
 ### Modifying visualization parameters
-These parameters affect how long the program takes to run as well as how good the animations will look. Please note that the running the program with the default parameters will produce high quality visualizations, but computation will likely take several (15+) minutes. Visualization parameters are found on lines 15-25 of main.jl Here are the default parameters and their meaning.
+These parameters affect how long the program takes to run as well as how good the animations will look. Please note that running the program with the default parameters will produce high quality visualizations, but computation will likely take several (15+) minutes. Visualization parameters are found on lines 15-25 of main.jl Here are the default parameters and their meaning.
 ###
 Total number of frames in each .gif. Large performance impact:
 `nframes = 300`
