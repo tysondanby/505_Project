@@ -1,5 +1,6 @@
 # Pressure driven flow between two cylinders.
 ## What it is
+This program allows the user to visualize pressure driven flow between two cylinders where the outer cylinder is moving.
 ## How to use
 Download this repository and run main.jl using the Julia programing language. After running, .gif animations will be in the Animations folder.
 ### Modifying simulation parameters
